@@ -67,7 +67,7 @@ export class GestureController{
     const p={x:mirror?1-pinches[0].center.x:pinches[0].center.x,y:pinches[0].center.y};
     if(this.baseline?.kind!=='rotate'){this.baseline={kind,p,angle,pitch};return {hands,status:'rotate'};}
     const dx=p.x-this.baseline.p.x,dy=p.y-this.baseline.p.y;
-    return {hands,status:'rotate',pose:{angle:this.baseline.angle+(Math.abs(dx)>.004?dx*5:0),pitch:clamp(this.baseline.pitch+(Math.abs(dy)>.004?dy*2.1:0),.12,1.48),view:'free'}};
+    return {hands,status:'rotate',pose:{angle:this.baseline.angle+(Math.abs(dx)>.004?dx*5:0),pitch:clamp(this.baseline.pitch+(Math.abs(dy)>.004?dy*2.1:0),-1.45,1.48),view:'free'}};
    }
    const d=dist(pinches[0].center,pinches[1].center);
    if(this.baseline?.kind!=='explode'){this.baseline={kind,d,exploded};return {hands,status:'explode'};}

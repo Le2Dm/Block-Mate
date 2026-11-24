@@ -1,6 +1,6 @@
 {
   "name": "block-mate-mode1",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "description": "BLOCK MATE mode 1 gesture and voice assembly prototype",

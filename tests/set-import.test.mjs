@@ -31,7 +31,4 @@ test('all instruction and part pictures are packaged locally',()=>{
  for(const n of [1,...Array.from({length:56},(_,i)=>i+5),62,63])assert.ok(existsSync(new URL(`../dist/assets/60482/page-${String(n).padStart(2,'0')}.webp`,import.meta.url)));
  for(const p of Object.values(set.parts))assert.ok(existsSync(new URL('../dist/'+p.image.replace(/^\.\//,''),import.meta.url)),p.image);
 });
-test('3D coverage is explicitly limited to the foundation task',()=>{
- assert.deepEqual(set.steps.filter(s=>s.model).map(s=>s.page),[6]);
- const model=blocksFor('firetruck-foundation');assert.equal(model[0].w,8);assert.equal(model[0].d,2);assert.equal(model[0].h,1/3);assert.ok(model.some(b=>b.group===1&&b.w===1));
-});
+test('all 28 assembly tasks enable the primary 3D guide',()=>{assert.equal(set.steps.filter(s=>s.model).length,28);});

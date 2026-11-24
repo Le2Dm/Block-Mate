@@ -1,4 +1,4 @@
-// Prepared from the official 6606824 instruction booklet. Captions are BLOCK MATE guidance.
+// Prepared from official booklet 6606824; all 28 tasks have a classroom 3D reconstruction.
 export const SET_60482 = {
   "setNumber": "60482",
   "manualId": "6606824",
@@ -342,7 +342,8 @@ export const SET_60482 = {
       ],
       "part": "6585272",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 6,
@@ -375,7 +376,7 @@ export const SET_60482 = {
         9
       ],
       "title": "바퀴 축과 첫 번째 덮개를 연결해요",
-      "text": "회색 바퀴 축 판 두 개를 검은 받침의 낮은 홈에 연결하고, 그림처럼 첫 번째 검은 덮개를 올려주세요.",
+      "text": "회색 바퀴 축 판 두 개를 검은 받침의 낮은 홈에 연결하고, 3D 모델처럼 첫 번째 검은 덮개를 올려주세요.",
       "why": "축이 차체 양옆으로 나오도록 방향을 확인하세요. 바퀴를 끼울 축을 덮지 않아요.",
       "needs": [
         {
@@ -389,7 +390,8 @@ export const SET_60482 = {
       ],
       "part": "6408542",
       "qty": 2,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 10,
@@ -399,7 +401,7 @@ export const SET_60482 = {
       ],
       "title": "나머지 바퀴 덮개를 연결해요",
       "text": "같은 검은색 바퀴 덮개 세 개를 남은 자리에 연결해주세요.",
-      "why": "공식 그림의 초록 테두리와 실물을 비교해 네 개가 대칭으로 붙었는지 확인해요.",
+      "why": "3D 모델의 초록색 표시와 실물을 비교해 네 개가 대칭으로 붙었는지 확인해요.",
       "needs": [
         {
           "part": "6443446",
@@ -408,7 +410,8 @@ export const SET_60482 = {
       ],
       "part": "6443446",
       "qty": 3,
-      "view": "top"
+      "view": "side",
+      "model": true
     },
     {
       "page": 12,
@@ -439,7 +442,8 @@ export const SET_60482 = {
       ],
       "part": "6118832",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 14,
@@ -448,7 +452,7 @@ export const SET_60482 = {
         15
       ],
       "title": "만든 뒤 범퍼를 차체에 연결해요",
-      "text": "직전 단계에서 만든 뒤 범퍼를 그림에 표시된 차체 끝에 연결하세요.",
+      "text": "직전 단계에서 만든 뒤 범퍼를 3D에 표시된 차체 끝에 연결하세요.",
       "why": "새 부품이 아니라 만들어둔 묶음을 사용해요. 빨간 후미등이 바깥쪽을 향해요.",
       "needs": [
         {
@@ -458,7 +462,8 @@ export const SET_60482 = {
       ],
       "part": "rear-bumper",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 16,
@@ -467,7 +472,7 @@ export const SET_60482 = {
         17
       ],
       "title": "긴 흰색 판과 작은 노란색 판을 놓아요",
-      "text": "흰색 긴 판 두 개와 노란색 작은 판 두 개를 공식 그림의 위치에 연결하세요.",
+      "text": "흰색 긴 판 두 개와 노란색 작은 판 두 개를 3D 모델의 연결 위치에 연결하세요.",
       "why": "흰색 판 두 개가 나란히 놓여요. 노란색은 한 돌기짜리 두 개예요.",
       "needs": [
         {
@@ -481,7 +486,8 @@ export const SET_60482 = {
       ],
       "part": "366601",
       "qty": 2,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 18,
@@ -504,7 +510,8 @@ export const SET_60482 = {
       ],
       "part": "6465247",
       "qty": 2,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 20,
@@ -513,7 +520,7 @@ export const SET_60482 = {
         21
       ],
       "title": "차체 중앙에 회색·파란색·빨간색 부품을 놓아요",
-      "text": "회색 2 × 2 판, 파란색 2 × 3 블록, 빨간색 1 × 4 블록을 그림에 맞춰 연결하세요.",
+      "text": "회색 2 × 2 판, 파란색 2 × 3 블록, 빨간색 1 × 4 블록을 3D에 표시된 위치에 연결하세요.",
       "why": "파란 부품은 높이가 있는 블록이고 회색 부품은 낮은 판이에요.",
       "needs": [
         {
@@ -531,7 +538,8 @@ export const SET_60482 = {
       ],
       "part": "4211397",
       "qty": 1,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 22,
@@ -554,7 +562,8 @@ export const SET_60482 = {
       ],
       "part": "4565323",
       "qty": 1,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 24,
@@ -585,7 +594,8 @@ export const SET_60482 = {
       ],
       "part": "6118832",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 26,
@@ -604,7 +614,8 @@ export const SET_60482 = {
       ],
       "part": "front-bumper",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 28,
@@ -614,7 +625,7 @@ export const SET_60482 = {
       ],
       "title": "작은 빨간색 등받이를 연결해요",
       "text": "빨간색 작은 등받이 두 개를 운전석 옆의 표시된 자리에 연결하세요.",
-      "why": "바닥과 세로 면의 방향을 공식 그림과 비교하세요.",
+      "why": "바닥과 세로 면의 방향을 3D 모델과 비교하세요.",
       "needs": [
         {
           "part": "6146217",
@@ -623,7 +634,8 @@ export const SET_60482 = {
       ],
       "part": "6146217",
       "qty": 2,
-      "view": "top"
+      "view": "side",
+      "model": true
     },
     {
       "page": 30,
@@ -646,7 +658,8 @@ export const SET_60482 = {
       ],
       "part": "73081",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 32,
@@ -665,7 +678,8 @@ export const SET_60482 = {
       ],
       "part": "302021",
       "qty": 1,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 34,
@@ -674,7 +688,7 @@ export const SET_60482 = {
         35
       ],
       "title": "사다리를 지지할 블록과 집게를 연결해요",
-      "text": "작은 회색 블록 두 개와 검은색 집게 판 두 개를 그림에 맞춰 뒤쪽에 연결하세요.",
+      "text": "작은 회색 블록 두 개와 검은색 집게 판 두 개를 3D에 표시된 위치에 뒤쪽에 연결하세요.",
       "why": "집게의 방향이 나란해야 나중에 사다리를 연결할 수 있어요.",
       "needs": [
         {
@@ -688,7 +702,8 @@ export const SET_60482 = {
       ],
       "part": "6388133",
       "qty": 2,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 36,
@@ -698,7 +713,7 @@ export const SET_60482 = {
       ],
       "title": "작은 빨간 판으로 위를 연결해요",
       "text": "빨간색 2 × 2 판을 방금 만든 뒤쪽 지지 구조 위에 연결하세요.",
-      "why": "집게 부분을 가리지 않도록 공식 그림의 위치를 확인하세요.",
+      "why": "집게 부분을 가리지 않도록 3D 모델의 연결 위치를 확인하세요.",
       "needs": [
         {
           "part": "302221",
@@ -707,7 +722,8 @@ export const SET_60482 = {
       ],
       "part": "302221",
       "qty": 1,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 38,
@@ -726,7 +742,8 @@ export const SET_60482 = {
       ],
       "part": "407021",
       "qty": 2,
-      "view": "top"
+      "view": "side",
+      "model": true
     },
     {
       "page": 40,
@@ -745,7 +762,8 @@ export const SET_60482 = {
       ],
       "part": "6586851",
       "qty": 2,
-      "view": "top"
+      "view": "side",
+      "model": true
     },
     {
       "page": 42,
@@ -754,7 +772,7 @@ export const SET_60482 = {
         43
       ],
       "title": "빨간색 창틀을 세워요",
-      "text": "빨간색 창틀 두 개를 그림처럼 뒤쪽에 나란히 연결하세요.",
+      "text": "빨간색 창틀 두 개를 3D 모델처럼 뒤쪽에 나란히 연결하세요.",
       "why": "가운데가 막힌 벽 부품과 달리 창틀 가운데는 비어 있어요.",
       "needs": [
         {
@@ -764,7 +782,8 @@ export const SET_60482 = {
       ],
       "part": "243221",
       "qty": 2,
-      "view": "top"
+      "view": "side",
+      "model": true
     },
     {
       "page": 44,
@@ -783,7 +802,8 @@ export const SET_60482 = {
       ],
       "part": "6514185",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 46,
@@ -802,7 +822,8 @@ export const SET_60482 = {
       ],
       "part": "firefighter",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 48,
@@ -825,7 +846,8 @@ export const SET_60482 = {
       ],
       "part": "6507908",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 50,
@@ -834,7 +856,7 @@ export const SET_60482 = {
         51
       ],
       "title": "매끈한 빨간색 타일을 올려요",
-      "text": "돌기가 없는 빨간색 1 × 4 타일을 공식 그림의 윗부분에 연결하세요.",
+      "text": "돌기가 없는 빨간색 1 × 4 타일을 3D 모델의 윗부분에 연결하세요.",
       "why": "돌기 네 개가 있는 긴 빨간 블록과 구분해주세요. 윗면이 매끈해요.",
       "needs": [
         {
@@ -844,7 +866,8 @@ export const SET_60482 = {
       ],
       "part": "243121",
       "qty": 1,
-      "view": "top"
+      "view": "top",
+      "model": true
     },
     {
       "page": 52,
@@ -863,7 +886,8 @@ export const SET_60482 = {
       ],
       "part": "6579692",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 54,
@@ -886,7 +910,8 @@ export const SET_60482 = {
       ],
       "part": "6510179",
       "qty": 1,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 56,
@@ -909,7 +934,8 @@ export const SET_60482 = {
       ],
       "part": "6336858",
       "qty": 4,
-      "view": "top"
+      "view": "free",
+      "model": true
     },
     {
       "page": 58,
@@ -928,7 +954,8 @@ export const SET_60482 = {
       ],
       "part": "wheels",
       "qty": 4,
-      "view": "top"
+      "view": "free",
+      "model": true
     }
   ]
 };

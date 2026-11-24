@@ -2,6 +2,7 @@ import {PARTS as PRACTICE_PARTS} from './model.js';
 import {SET_60482} from './set-60482.js';
 import {paintModel,paintTable} from './render.js';
 import {PRACTICE_STEPS,parseGuideCommand,GestureController,clamp,containedVideoRect,screenToVideo} from './mode1-core.js';
+import {paintGuideModel,disposeGuideModel} from './guide-3d.js';
 import {HandService} from './hand-service.js';
 const $=s=>document.querySelector(s);
 const requestedSet=new URLSearchParams(location.search).get('set');
@@ -9,16 +10,16 @@ const set=requestedSet==='60482'?SET_60482:null;
 const STEPS=set?set.steps:PRACTICE_STEPS;
 const PARTS=set?set.parts:PRACTICE_PARTS;
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={step:0,mode:'assembly',pose:{angle:-.7,pitch:.48,view:'free',exploded:0,zoom:1},highlight:false,selected:null,source:'',zones:[],pending:null,mirror:true,drawing:false,drag:null,lastHands:[],lastGesture:null,events:[],modelStatus:'idle',mic:false,sound:false,completed:false};
+const state={step:0,mode:'assembly',pose:{angle:-.7,pitch:.48,view:'free',exploded:0,zoom:1},highlight:true,selected:null,source:'',zones:[],pending:null,mirror:true,drawing:false,drag:null,lastHands:[],lastGesture:null,events:[],modelStatus:'idle',mic:false,sound:false,completed:false};
 let stream=null,cameraPending=false,recognition=null,restartTimer=null,toastTimer,animationFrame,registrationRect=null,modelDrag=null,lastCommand='',lastCommandAt=0,speechOutput=false,speechGeneration=0,frameGeneration=0,returnFocus=null;
 const gestures=new GestureController();
 const service=new HandService(onHands,onModelStatus);
 const current=()=>STEPS[state.step];
-let guideDisplay='manual',instructionIndex=0;
+let guideDisplay='model',instructionIndex=0,modelUnavailable=false,referenceCollapsed=false;
 const needs=()=>current().needs||[{part:current().part,qty:current().qty}];
 const selectedMatches=()=>needs().some(n=>n.part===state.selected);
 const partImage=(id,label)=>PARTS[id].image?`<img class="part-photo" src="${PARTS[id].image}" alt="${escape(label||PARTS[id].name)}">`:`<canvas data-part="${id}" aria-label="${escape(PARTS[id].name)}"></canvas>`;
-const modelOptions=()=>({type:set?'firetruck-foundation':'practice',step:set?99:state.step,...state.pose});
+const modelOptions=()=>({type:set?'firetruck':'practice',step:state.step,...state.pose,completed:state.completed,focusPart:state.selected,highlight:state.highlight&&!state.completed});
 const log=(action,detail='')=>state.events.push({time:new Date().toISOString(),step:state.step+1,mode:state.mode,action,detail});
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200);}
 function say(text){
@@ -28,7 +29,7 @@ function say(text){
   const done=()=>{if(generation===speechGeneration)speechOutput=false;};u.onend=done;u.onerror=done;speechSynthesis.speak(u);
  }
 }
-function paint(){paintModel($('#model'),{...modelOptions(),highlight:state.highlight});}
+function paint(){if(!modelUnavailable)paintGuideModel($('#model'),modelOptions());}
 function update(){
  const step=current();$('#step-count').textContent=`${state.step+1} / ${STEPS.length}`;
  $('#step-label').textContent=`조립 단계 ${state.step+1}`;$('#step-title').textContent=step.title;$('#step-description').textContent=step.text;$('#step-why').textContent=step.why;
@@ -48,7 +49,7 @@ function update(){
  $('#mic-toggle').textContent=state.mic?'음성 끄기':'음성 켜기';$('#mic-toggle').setAttribute('aria-pressed',String(state.mic));
  if(state.drawing)$('#camera-caption').textContent='등록할 부품 주위를 드래그해주세요. 부품 종류는 직접 지정해요.';
  else if(stream)$('#camera-caption').textContent=control?'가이드 조작 중 · 엄지와 검지를 붙여 집어주세요.':state.zones.length?'등록한 부품 자리 안을 검지로 가리켜주세요.':'부품을 가리키려면 아래에서 자리를 먼저 등록해주세요.';
- else $('#camera-caption').textContent=set?'카메라 없이도 부품번호와 공식 그림으로 조립할 수 있어요.':'예시 화면 · 카메라 없이 버튼과 음성 명령으로 연습할 수 있어요.';
+ else $('#camera-caption').textContent=set?'카메라 없이도 부품번호와 3D 모델로 조립할 수 있어요.':'예시 화면 · 카메라 없이 버튼과 음성 명령으로 연습할 수 있어요.';
  updateSetGuide();paint();drawCamera();
 }
 function modal(title,body,actions=''){
@@ -58,21 +59,20 @@ function modal(title,body,actions=''){
  $('#dialog').querySelectorAll('canvas[data-part]').forEach(c=>paintModel(c,{part:c.dataset.part}));gestures.reset();
 }
 function closeModal(){const wasOpen=$('#dialog').open;if(wasOpen)$('#dialog').close();registrationRect=null;gestures.reset();if(wasOpen&&returnFocus?.isConnected)returnFocus.focus({preventScroll:true});}
-function setMode(mode){if(set&&mode==='control'&&!current().model){say('이 단계에서는 공식 설명서로 조립해요. 가리키기와 음성 질문은 계속 사용할 수 있어요.');return;}if(set&&mode==='control')guideDisplay='model';state.mode=mode;state.drawing=false;gestures.reset();log('입력 모드',mode);say(mode==='control'?'가이드 조작을 켰어요. 한 손으로 집어 회전하거나, 두 손으로 집고 벌려 분해도를 살펴보세요.':'조립 상태로 돌아왔어요. 블록을 움직여도 모델은 돌아가지 않아요.');update();}
+function setMode(mode){if(modelUnavailable&&mode==='control'){say('3D 화면을 사용할 수 없어요. 공식 설명서로 이어가주세요.');return;}if(set&&mode==='control')guideDisplay='model';state.mode=mode;state.drawing=false;gestures.reset();log('입력 모드',mode);say(mode==='control'?'가이드 조작을 켰어요. 한 손으로 집어 회전하거나, 두 손으로 집고 벌려 분해도를 살펴보세요.':'조립 상태로 돌아왔어요. 블록을 움직여도 모델은 돌아가지 않아요.');update();}
 function setView(view){
- if(set&&!current().model){say('이 단계는 공식 설명서 그림으로 연결 방향을 확인해요. 3D 연결 시연은 차체 바닥 단계에서 제공해요.');return;}
  if(set)guideDisplay='model';
  if(view==='front'){state.pose.angle=0;state.pose.pitch=0;}if(view==='side'){state.pose.angle=Math.PI/2;state.pose.pitch=0;}if(view==='top'){state.pose.angle=0;state.pose.pitch=Math.PI/2;}if(view==='free'){state.pose.angle=-.7;state.pose.pitch=.48;}
  state.pose.view=view;gestures.reset();log('시점 변경',view);say(`${{front:'정면',side:'측면',top:'윗면',free:'입체 시점'}[view]}으로 보여드릴게요. ${{front:'앞에서 연결된 높이를 비교해보세요.',side:'옆에서 층별 높이와 연결 면을 확인해보세요.',top:'위에서 돌기와 겹치는 위치를 확인해보세요.',free:'여러 방향으로 돌려 연결 구조를 살펴보세요.'}[view]}`);update();
 }
-function setExploded(value,announce=false){if(set&&!current().model){say('이 단계는 공식 설명서의 연결 그림을 확인해주세요.');return;}if(set)guideDisplay='model';state.pose.exploded=clamp(value,0,1);log('분해도',Math.round(value*100));if(announce)say(value===0?'부품을 원래 연결 구조로 모았어요.':state.step===0?'현재는 부품 하나라 분리할 연결이 없어요. 다음 단계부터 분해도를 확인할 수 있어요.':'부품 사이를 벌려서 연결 구조를 보여드릴게요. 실제 블록을 분해할 필요는 없어요.');update();}
+function setExploded(value,announce=false){if(set)guideDisplay='model';if(value>0&&state.pose.view==='top'){state.pose.view='free';state.pose.angle=-.7;state.pose.pitch=.48;}state.pose.exploded=clamp(value,0,1);log('분해도',Math.round(value*100));if(announce)say(value===0?'부품을 원래 연결 구조로 모았어요.':!set&&state.step===0?'현재는 부품 하나라 분리할 연결이 없어요. 다음 단계부터 분해도를 확인할 수 있어요.':'부품 사이를 벌려서 연결 구조를 보여드릴게요. 실제 블록을 분해할 필요는 없어요.');update();}
 function moveStep(delta){
  cancelAnimationFrame(animationFrame);closeModal();const next=state.step+delta;if(next>=STEPS.length){finish();return;}if(next<0)return;
- state.step=next;instructionIndex=0;guideDisplay='manual';state.mode='assembly';state.selected=null;state.pending=null;state.highlight=false;state.pose.exploded=0;state.completed=false;state.drawing=false;gestures.reset();log('단계 이동',state.step+1);say(current().text);update();
+ state.step=next;instructionIndex=0;guideDisplay='model';state.mode='assembly';state.selected=null;state.pending=null;state.highlight=true;state.pose.exploded=0;state.completed=false;state.drawing=false;gestures.reset();log('단계 이동',state.step+1);say(current().text);update();playConnection();
 }
 function finish(){
- state.completed=true;state.mode='assembly';gestures.reset();stopMic();log('조립 안내 완료');update();
- modal(set?'소방차 조립 안내를 마쳤어요':'조립 연습을 마쳤어요',set?`<img class="finish-image" src="./assets/60482/page-60.webp" alt="소방차 공식 완성 그림"><p>공식 설명서 5–60쪽의 28개 과업을 확인했어요. 바퀴 네 개와 소방관을 포함해 실제 완성 모습을 비교해주세요.</p><p>연결 완료는 사용자가 확인한 결과이며 카메라가 조립 성공을 판정한 것은 아니에요.</p>`:`<div class="done-state"><h2>연결 구조를 살펴봤어요.</h2><p>다섯 단계의 조립 가이드를 확인했어요. 완성한 실물을 모델과 비교해주세요.</p></div>`,'<button class="secondary" data-close>완성 모양 보기</button><button class="primary" id="restart-demo">처음부터 다시</button>');
+ state.completed=true;state.mode='assembly';state.selected=null;state.highlight=false;state.pose={angle:-.7,pitch:.48,view:'free',exploded:0,zoom:1};gestures.reset();stopMic();log('조립 안내 완료');update();
+ modal(set?'소방차 조립 안내를 마쳤어요':'조립 연습을 마쳤어요',set?`<img class="finish-image" src="${modelUnavailable?'./assets/60482/page-60.webp':$('#model').toDataURL('image/png')}" alt="소방차 완성 3D 모델"><p>28개 과업의 3D 조립 구조를 확인했어요. 바퀴 네 개와 소방관을 포함해 실제 완성 모습을 비교해주세요.</p><p>연결 완료는 사용자가 확인한 결과이며 카메라가 조립 성공을 판정한 것은 아니에요.</p>`:`<div class="done-state"><h2>연결 구조를 살펴봤어요.</h2><p>다섯 단계의 조립 가이드를 확인했어요. 완성한 실물을 모델과 비교해주세요.</p></div>`,'<button class="secondary" data-close>완성 모양 보기</button><button class="primary" id="restart-demo">처음부터 다시</button>');
 }
 function choosePart(id,source){
  if(!PARTS[id])return;state.selected=id;state.source=source;log('부품 선택',`${id} · ${source}`);
@@ -84,12 +84,17 @@ function compare(){
  modal(match?'이번 단계에 필요한 부품이에요':'다른 부품이에요',`<div class="comparison">${[[expected,'이번 단계에 필요한 부품'],[state.selected,'내가 선택한 부품']].map(([id,label])=>`<div><span>${label}</span>${partImage(id)}<strong>${PARTS[id].name}</strong>${PARTS[id].elementId?`<small>부품번호 ${PARTS[id].elementId}</small>`:''}</div>`).join('')}</div><div class="comparison-result">${match?`${PARTS[expected].name} ${qty}개가 필요해요. ${needs().length>1?'이번 단계의 나머지 부품도 함께 준비해주세요.':''}`:`선택한 것은 ${PARTS[state.selected].name}이에요. 이번 단계의 부품 목록과 비교해주세요. ${PARTS[expected].name}: ${PARTS[expected].detail}.`}</div><p>등록한 자리 또는 직접 선택한 종류를 비교한 결과예요. 카메라가 부품 모양을 판별한 결과는 아닙니다.</p>`,match?'<button class="primary" id="dialog-where">연결 위치 보기</button>':'<button class="secondary" data-close>다시 가리키기</button><button class="primary" id="dialog-select">부품 직접 선택</button>');
  say(match?'선택한 부품은 이번 단계에 필요한 부품이에요.':'선택한 부품과 이번 단계의 부품이 달라요. 색상과 모양을 비교해보세요.');
 }
+function playConnection(){
+ cancelAnimationFrame(animationFrame);const start=performance.now(),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const tick=now=>{const t=reduce?1:Math.min(1,(now-start)/950),eased=1-Math.pow(1-t,3);if(!modelUnavailable)paintGuideModel($('#model'),{...modelOptions(),highlight:true,animation:eased});if(t<1)animationFrame=requestAnimationFrame(tick);};animationFrame=requestAnimationFrame(tick);
+}
 function showLocation(){
- state.highlight=true;
- if(set){instructionIndex=current().pages.length-1;if(guideDisplay==='model'&&current().model)setView(current().view);else guideDisplay='manual';update();say(current().text+' '+current().why);$('#instruction-pane').classList.add('location-highlight');setTimeout(()=>$('#instruction-pane').classList.remove('location-highlight'),2000);log('공식 연결 그림 안내');return;}
- setView(current().view);say(current().text+' 표시한 부분을 확인해주세요.');log('연결 위치 안내');
- const start=performance.now(),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
- cancelAnimationFrame(animationFrame);const animate=now=>{const t=reduce?1:Math.min(1,(now-start)/850);paintModel($('#model'),{...modelOptions(),highlight:true,animation:t});if(t<1)animationFrame=requestAnimationFrame(animate);};animationFrame=requestAnimationFrame(animate);
+ state.highlight=true;guideDisplay='model';
+ if(modelUnavailable){if(set){guideDisplay='manual';instructionIndex=current().pages.length-1;update();}say(current().text);return;}
+ setView(current().view);
+ if(set&&[12,14].includes(current().page)){state.pose.view='free';state.pose.angle=Math.PI-.6;state.pose.pitch=.48;}
+ if(set&&current().page===56){state.pose.view='free';state.pose.angle=-Math.PI/2;state.pose.pitch=.5;}
+ say(state.selected?`${PARTS[state.selected].name}을 초록색 테두리로 표시한 위치에 연결해주세요. ${current().why}`:current().text+' 초록색으로 표시한 부품과 연결 방향을 확인해주세요.');update();playConnection();log('3D 연결 위치 안내');
 }
 function respond(intent){
  if(['compare','where'].includes(intent)&&!state.selected){state.pending=intent;say('어떤 부품인지 먼저 확인할게요. 등록한 자리를 가리키거나 부품 종류를 직접 선택해주세요.');log('대상 확인 대기',intent);update();return;}
@@ -117,7 +122,7 @@ function manualParts(){
  const order=[...new Set([...needs().map(n=>n.part),...Object.keys(PARTS).filter(id=>!PARTS[id].virtual)])];
  modal('어떤 부품을 선택했나요?',`<p>실물의 색상과 모양을 확인하고 직접 선택해주세요. 이번 단계의 부품부터 보여드려요.</p><div class="part-buttons ${set?'catalog-parts':''}">${order.map(id=>`<button class="secondary" data-select-part="${id}">${set?partImage(id):''}<strong>${escape(PARTS[id].name)}</strong>${PARTS[id].elementId?`<small>부품번호 ${PARTS[id].elementId}</small>`:''}</button>`).join('')}</div>`);
 }
-function restart(){closeModal();stopMic();cancelAnimationFrame(animationFrame);state.step=0;instructionIndex=0;guideDisplay='manual';state.completed=false;state.selected=null;state.pending=null;state.mode='assembly';state.highlight=false;state.pose={angle:-.7,pitch:.48,view:'free',exploded:0,zoom:1};gestures.reset();log('연습 다시 시작');say('첫 단계부터 다시 시작해요. 등록한 부품 자리는 그대로 유지해요.');update();}
+function restart(){closeModal();stopMic();cancelAnimationFrame(animationFrame);state.step=0;instructionIndex=0;guideDisplay='model';state.completed=false;state.selected=null;state.pending=null;state.mode='assembly';state.highlight=true;state.pose={angle:-.7,pitch:.48,view:'free',exploded:0,zoom:1};gestures.reset();log('연습 다시 시작');say('첫 단계부터 다시 시작해요. 등록한 부품 자리는 그대로 유지해요.');update();}
 function onModelStatus(status,message=''){
  state.modelStatus=status;const labels={loading:'손 인식 모델 준비 중',ready:'손 인식 준비 완료',error:'손 인식을 사용할 수 없어요'};$('#tracking-state').textContent=labels[status]||'손 인식 준비 전';
  if(status==='error'){gestures.reset();state.lastHands=[];$('#gesture-state').textContent='버튼·마우스·음성으로 계속할 수 있어요.';toast(message||'손 인식 준비에 실패했어요. 다시 준비하거나 버튼으로 진행해주세요.');}
@@ -179,14 +184,14 @@ function startMic(){
 }
 function stopMic(){state.mic=false;clearTimeout(restartTimer);const rec=recognition;recognition=null;if(rec){rec.onend=null;rec.abort();}$('#speech-status').textContent='음성 꺼짐';$('#mic-toggle').textContent='음성 켜기';$('#mic-toggle').setAttribute('aria-pressed','false');}
 function help(){modal('조립하면서 가이드를 조작해요',`<ol><li><strong>조립할 부품 준비</strong><br>${set?'60482 소방차의 실제 부품을 준비하세요. 부품번호는 공식 설명서 62–63쪽을 기준으로 표시해요.':'2 × 4 블록 2개, 2 × 2 블록 3개를 준비해주세요.'}</li><li><strong>카메라와 부품 자리 준비</strong><br>부품을 펼치고 카메라를 고정하세요. ‘실제 부품 자리 등록’에서 영역과 종류를 지정하면 검지로 가리켜 선택할 수 있어요.</li><li><strong>궁금한 점 질문</strong><br>음성을 켜고 “이거 맞아?”, “어디에 끼워?”라고 말해주세요. 질문을 먼저 해도 대상을 선택할 때까지 기다려요.</li><li><strong>공간 구조 확인</strong><br>“가이드 조작할게”로 전환한 뒤 한 손 집기로 회전, 두 손 집기로 분해도를 조작해요. “정면”, “옆에서 보여줘”, “위에서 보여줘”로 시점을 고정할 수도 있어요.</li><li><strong>조립으로 돌아가기</strong><br>“다시 조립할게”라고 말한 뒤 실제 블록을 연결하세요. “연결했어”라고 말하면 다음 단계로 이동해요.</li></ol><p>인식이 어려우면 버튼·모델 드래그·직접 입력으로 같은 기능을 사용할 수 있어요.</p>`,'<button class="primary" data-close>시작할게요</button>');}
-function scope(){modal('이번 시제품의 작동 범위',`<dl class="capabilities"><dt>실제 작동</dt><dd>카메라 손 관절 인식, 모드에 따른 회전·분해도 제스처, 등록한 자리 가리키기, 고정 시점, 브라우저 음성 명령, 현재 단계에 따른 비교·연결 안내, 설명서 QR·사진 읽기와 60482 공식 설명서 표시</dd><dt>직접 확인</dt><dd>부품 종류는 자리 등록 또는 직접 선택으로 입력합니다. 실제 연결 완료는 사용자가 확인합니다.</dd><dt>포함하지 않음</dt><dd>QR에서 3D 모델 자동 추출, 전체 세트의 정밀 3D 모델, 임의의 실물 부품 종류 자동 식별, 실물 회전 자동 동기화, 완성 상태 자동 판정, 생성형 AI 답변</dd><dt>사용 환경</dt><dd>카메라·음성은 보안 연결과 브라우저 지원·권한이 필요해요. 손 인식은 기기에서 처리하며, 음성 인식은 브라우저 제공 서비스를 사용해요.</dd><dt>기록</dt><dd>현재 탭에서만 진행 상태를 유지해요. 카메라 사진·녹음·부품 배치는 서버에 저장하지 않아요.</dd></dl>`,'<button class="primary" data-close>확인했어요</button>');}
+function scope(){modal('이번 시제품의 작동 범위',`<dl class="capabilities"><dt>실제 작동</dt><dd>카메라 손 관절 인식, 모드에 따른 회전·분해도 제스처, 등록한 자리 가리키기, 고정 시점, 브라우저 음성 명령, 현재 단계에 따른 비교·연결 안내, 60482 전체 28단계의 3D 조립 구조, 연결 동작 재생, 설명서 QR·사진 읽기</dd><dt>직접 확인</dt><dd>부품 종류는 자리 등록 또는 직접 선택으로 입력합니다. 실제 연결 완료는 사용자가 확인합니다.</dd><dt>포함하지 않음</dt><dd>QR에서 3D 모델 자동 추출, 공식 CAD 수준의 세부 형상, 임의의 실물 부품 종류 자동 식별, 실물 회전 자동 동기화, 완성 상태 자동 판정, 생성형 AI 답변</dd><dt>사용 환경</dt><dd>카메라·음성은 보안 연결과 브라우저 지원·권한이 필요해요. 손 인식은 기기에서 처리하며, 음성 인식은 브라우저 제공 서비스를 사용해요.</dd><dt>기록</dt><dd>현재 탭에서만 진행 상태를 유지해요. 카메라 사진·녹음·부품 배치는 서버에 저장하지 않아요.</dd></dl>`,'<button class="primary" data-close>확인했어요</button>');}
 
 $('#toggle-mode').onclick=()=>setMode(state.mode==='assembly'?'control':'assembly');$('#camera-toggle').onclick=()=>stream?cameraStop():cameraStart();$('#prepare-hands').onclick=prepare;$('#mic-toggle').onclick=()=>state.mic?stopMic():startMic();$('#sound').onchange=e=>{state.sound=e.target.checked;if(!state.sound){++speechGeneration;window.speechSynthesis?.cancel();speechOutput=false;}};
 $('#mirror').onchange=e=>{state.mirror=e.target.checked;gestures.reset();update();};$('#register-zone').onclick=beginRegistration;$('#manual-part').onclick=manualParts;
 $('#clear-zones').onclick=()=>{state.zones=[];state.selected=null;state.pending=null;gestures.reset();log('부품 자리 초기화');update();};$('#clear-selection').onclick=()=>{state.selected=null;state.pending=null;gestures.reset();say('선택과 질문을 비웠어요. 다음 부품을 가리켜주세요.');update();};
 $('#zone-list').onclick=e=>{const b=e.target.closest('[data-delete-zone]');if(b){state.zones=state.zones.filter(z=>z.id!==b.dataset.deleteZone);gestures.reset();update();}};
 $('#previous').onclick=()=>moveStep(-1);$('#next').onclick=()=>state.completed?restart():moveStep(1);$('#where').onclick=()=>{if(state.selected&&!selectedMatches()){respond('where');return;}showLocation();};
-$('#reset-view').onclick=()=>{state.pose={angle:-.7,pitch:.48,view:'free',exploded:0,zoom:1};gestures.reset();update();};$('#explode').oninput=e=>{state.pose.exploded=Number(e.target.value)/100;$('#explode-value').textContent=`${e.target.value}%`;paint();};$('#explode').onchange=()=>log('분해도 직접 조작',state.pose.exploded);$('#collapse').onclick=()=>setExploded(0,true);
+$('#reset-view').onclick=()=>{state.pose={angle:-.7,pitch:.48,view:'free',exploded:0,zoom:1};gestures.reset();update();};$('#explode').oninput=e=>{state.pose.exploded=Number(e.target.value)/100;if(state.pose.exploded>0&&state.pose.view==='top'){state.pose.view='free';state.pose.angle=-.7;state.pose.pitch=.48;}update();};$('#explode').onchange=()=>log('분해도 직접 조작',state.pose.exploded);$('#collapse').onclick=()=>setExploded(0,true);
 $('#zoom-in').onclick=()=>{state.pose.zoom=clamp(state.pose.zoom+.15,.6,1.55);paint();};$('#zoom-out').onclick=()=>{state.pose.zoom=clamp(state.pose.zoom-.15,.6,1.55);paint();};
 for(const b of document.querySelectorAll('[data-view]'))b.onclick=()=>setView(b.dataset.view);
 $('#command-form').onsubmit=e=>{e.preventDefault();command($('#command').value);$('#command').value='';};$('#help').onclick=help;$('#scope').onclick=scope;
@@ -207,35 +212,49 @@ overlay.onpointermove=e=>{if(!state.drag)return;const p=pointFromEvent(e);if(p){
 overlay.onpointerup=()=>{if(!state.drag)return;const{start,end}=state.drag;state.drag=null;const rect={x:Math.min(start.x,end.x),y:Math.min(start.y,end.y),w:Math.abs(end.x-start.x),h:Math.abs(end.y-start.y)};if(rect.w<.035||rect.h<.035){toast('부품을 둘러싸도록 조금 더 넓게 그려주세요.');drawCamera();return;}if(state.zones.some(z=>Math.max(0,Math.min(rect.x+rect.w,z.x+z.w)-Math.max(rect.x,z.x))*Math.max(0,Math.min(rect.y+rect.h,z.y+z.h)-Math.max(rect.y,z.y))>.002)){toast('다른 자리와 겹치지 않도록 다시 그려주세요.');drawCamera();return;}registerRect(rect);};
 overlay.onpointercancel=()=>{state.drag=null;drawCamera();};
 $('#model').onpointerdown=e=>{if(set&&(!current().model||guideDisplay!=='model'))return;modelDrag={x:e.clientX,y:e.clientY,angle:state.pose.angle,pitch:state.pose.pitch};$('#model').setPointerCapture(e.pointerId);};
-$('#model').onpointermove=e=>{if(!modelDrag)return;state.pose.view='free';state.pose.angle=modelDrag.angle+(e.clientX-modelDrag.x)*.012;state.pose.pitch=clamp(modelDrag.pitch+(e.clientY-modelDrag.y)*.006,.12,1.48);paint();};
+$('#model').onpointermove=e=>{if(!modelDrag)return;state.pose.view='free';state.pose.angle=modelDrag.angle+(e.clientX-modelDrag.x)*.012;state.pose.pitch=clamp(modelDrag.pitch+(e.clientY-modelDrag.y)*.006,-1.45,1.48);paint();};
 $('#model').onpointerup=()=>{if(modelDrag){log('마우스·터치 모델 회전');modelDrag=null;update();}};$('#model').onpointercancel=()=>modelDrag=null;
-$('#model').onkeydown=e=>{const amount={ArrowLeft:[-.15,0],ArrowRight:[.15,0],ArrowUp:[0,.1],ArrowDown:[0,-.1]}[e.key];if(!amount)return;e.preventDefault();state.pose.view='free';state.pose.angle+=amount[0];state.pose.pitch=clamp(state.pose.pitch+amount[1],.12,1.48);update();};
+$('#model').onkeydown=e=>{const amount={ArrowLeft:[-.15,0],ArrowRight:[.15,0],ArrowUp:[0,.1],ArrowDown:[0,-.1]}[e.key];if(!amount)return;e.preventDefault();state.pose.view='free';state.pose.angle+=amount[0];state.pose.pitch=clamp(state.pose.pitch+amount[1],-1.45,1.48);update();};
 const observer=new ResizeObserver(()=>{paint();drawCamera();});observer.observe($('#model'));observer.observe($('#camera-stage'));
 document.addEventListener('visibilitychange',()=>{if(document.hidden){gestures.reset();if(recognition){recognition.onend=null;recognition.abort();recognition=null;}}else if(state.mic){state.mic=false;startMic();}});
-window.addEventListener('pagehide',()=>{service.dispose();stream?.getTracks().forEach(t=>t.stop());stopMic();window.speechSynthesis?.cancel();observer.disconnect();});
+window.addEventListener('pagehide',()=>{service.dispose();stream?.getTracks().forEach(t=>t.stop());stopMic();window.speechSynthesis?.cancel();observer.disconnect();disposeGuideModel($('#model'));});
 if(set){
- document.body.classList.add('set-guide');$('#registered-set').hidden=false;$('.page-title h1').textContent='내 소방차, 한 단계씩 연결해요.';$('.page-title p').textContent='60482 · 공식 설명서와 부품번호로 확인하는 조립 가이드';$('#guide-display-tabs').hidden=false;$('#required-parts').hidden=false;$('#official-pdf').href=set.pdfUrl;
+ document.body.classList.add('set-guide');$('#registered-set').hidden=false;$('.page-title h1').textContent='내 소방차, 한 단계씩 연결해요.';$('.page-title p').textContent='60482 · 3D로 돌려보고, 연결할 위치를 확인해요.';$('#guide-display-tabs').hidden=false;$('#required-parts').hidden=false;$('#official-pdf').href=set.pdfUrl;
  $('#step-picker').innerHTML=STEPS.map((step,index)=>`<option value="${index}">${index+1}. ${escape(step.title)}</option>`).join('');$('#step-picker').onchange=e=>moveStep(Number(e.target.value)-state.step);
  $('#feedback').textContent='60482 설명서를 불러왔어요. 이번 단계의 부품을 선택하고 “이거 맞아?”, “어디에 끼워?”라고 질문해보세요.';
  $('#instruction-pages').onclick=e=>{const b=e.target.closest('[data-instruction-index]');if(b){instructionIndex=Number(b.dataset.instructionIndex);updateSetGuide();}};
  $('#instruction-image-button').onclick=enlargeInstruction;$('#enlarge-instruction').onclick=enlargeInstruction;
+ $('#reference-open').onclick=()=>showInstructionPage(referencePage());
+ $('#reference-toggle').onclick=()=>{referenceCollapsed=!referenceCollapsed;updateReference();};
  for(const b of document.querySelectorAll('[data-guide-display]'))b.onclick=()=>{guideDisplay=b.dataset.guideDisplay;if(guideDisplay==='manual'){state.mode='assembly';gestures.reset();}update();};
  $('#required-part-list').onclick=e=>{const b=e.target.closest('[data-choose-needed]');if(b)choosePart(b.dataset.chooseNeeded,'이번 단계 목록에서 직접 선택');};
  $('#set-inventory').onclick=()=>modal('전체 부품 · 36종 / 67개',`<p>공식 설명서 62–63쪽의 부품번호와 수량이에요. 남은 수량이나 실물 인식 결과가 아닙니다.</p><div class="inventory-grid">${Object.entries(PARTS).filter(([,p])=>!p.virtual).map(([id,p])=>`<div>${partImage(id)}<strong>${escape(p.name)}</strong><span>${id} · 전체 ${p.qty}개</span></div>`).join('')}</div>`);
 }else if(requestedSet){toast('아직 지원하지 않는 세트예요. 기본 블록 연습을 표시해요.');}
-function enlargeInstruction(){const page=state.completed?60:current().pages[instructionIndex]||current().page;modal(`공식 설명서 ${page}쪽`,`<img class="large-instruction" src="./assets/60482/page-${String(page).padStart(2,'0')}.webp" alt="60482 공식 설명서 ${page}쪽"><p>${escape(current().text)}</p>`);}
+function referencePage(){return state.completed?60:current().pages.at(-1);}
+function showInstructionPage(page){modal(`공식 설명서 ${page}쪽`,`<img class="large-instruction" src="./assets/60482/page-${String(page).padStart(2,'0')}.webp" alt="60482 공식 설명서 ${page}쪽"><p>${escape(state.completed?'완성한 실물과 비교해주세요.':current().text)}</p>`);}
+function enlargeInstruction(){showInstructionPage(state.completed?60:current().pages[instructionIndex]||current().page);}
+function updateReference(){
+ if(!set)return;
+ const page=referencePage();$('#reference-card').hidden=false;$('#reference-page').textContent=`${page}쪽 · ${state.completed?'완성 모습':'연결 모습'}`;
+ $('#reference-image').src=`./assets/60482/page-${String(page).padStart(2,'0')}.webp`;$('#reference-image').alt=`60482 소방차 공식 설명서 ${page}쪽 ${state.completed?'완성 모습':'연결 모습'}`;
+ $('#reference-open').setAttribute('aria-label',`공식 설명서 ${page}쪽 확대`);$('#reference-content').hidden=referenceCollapsed;
+ $('#reference-toggle').textContent=referenceCollapsed?'펼치기':'접기';$('#reference-toggle').setAttribute('aria-expanded',String(!referenceCollapsed));$('.model-stage').classList.toggle('reference-collapsed',referenceCollapsed);
+}
 function updateSetGuide(){
  if(!set)return;
- const step=current(),model=!state.completed&&guideDisplay==='model'&&step.model;$('#step-picker').value=String(state.step);
- if(!step.model)guideDisplay='manual';
+ updateReference();
+ const step=current(),model=guideDisplay==='model'&&!modelUnavailable;$('.model-legend').hidden=state.completed;$('#step-picker').value=String(state.step);
+ if(modelUnavailable)guideDisplay='manual';
  $('#instruction-pane').hidden=!!model;$('.model-stage').hidden=!model;$('.view-tabs').hidden=!model;$('.explode-control').hidden=!model;
- $('#toggle-mode').disabled=!step.model;$('#reset-view').disabled=!model;
- const buttons=document.querySelectorAll('[data-guide-display]');for(const b of buttons){b.disabled=b.dataset.guideDisplay==='model'&&!step.model;b.setAttribute('aria-pressed',String(b.dataset.guideDisplay===guideDisplay));}
+ $('#toggle-mode').disabled=modelUnavailable;$('#reset-view').disabled=!model;
+ const buttons=document.querySelectorAll('[data-guide-display]');for(const b of buttons){b.disabled=b.dataset.guideDisplay==='model'&&modelUnavailable;b.setAttribute('aria-pressed',String(b.dataset.guideDisplay===guideDisplay));}
  $('#instruction-pages').innerHTML=state.completed?'<button aria-pressed="true">60쪽 · 완성 모습</button>':step.pages.map((page,i)=>`<button data-instruction-index="${i}" aria-pressed="${i===instructionIndex}">${page}쪽 · ${i===0&&step.pages.length>1?'부품 준비':'연결 모습'}</button>`).join('');
  const page=state.completed?60:step.pages[instructionIndex]||step.page;$('#instruction-image').src=`./assets/60482/page-${String(page).padStart(2,'0')}.webp`;$('#instruction-image').alt=`60482 소방차 공식 설명서 ${page}쪽`;
  $('#required-parts').hidden=state.completed;$('#where').hidden=state.completed;
  if(state.completed){$('#step-count').textContent='완료';$('#step-label').textContent='조립 안내 완료';$('#step-title').textContent='소방차를 완성했어요.';$('#step-description').textContent='실물의 바퀴 네 개와 연결 상태를 공식 완성 그림과 비교해주세요.';$('#step-why').textContent='진행한 모든 과업은 상단 단계 선택에서 다시 확인할 수 있어요.';$('#needed-part').textContent='공식 설명서 60쪽';$('#next').textContent='처음부터 다시';}
- $('#instruction-note').textContent=state.completed?'공식 완성 모습이에요. 바퀴가 돌아가는지, 빠진 부품은 없는지 직접 확인해주세요.':step.model?'공식 그림과 3D 연결 구조를 함께 확인할 수 있어요. 3D는 연결 위치를 설명하는 단순화 모델이에요.':'공식 설명서의 연결 그림을 확인해요. 3D 연결 시연은 차체 바닥 단계(6–7쪽)에서 제공해요.';
+ $('#instruction-note').textContent=state.completed?'공식 완성 모습이에요. 바퀴가 돌아가는지, 빠진 부품은 없는지 직접 확인해주세요.':'공식 설명서는 부품의 세부 모양을 비교하는 보조 자료예요. 조립 안내는 3D 연결 구조에서 확인해주세요.';
  $('#required-part-list').innerHTML=needs().map(n=>`<button class="needed-part ${n.part===state.selected?'chosen':''}" data-choose-needed="${n.part}">${partImage(n.part)}<span><strong>${escape(PARTS[n.part].name)}</strong><small>${PARTS[n.part].elementId?'부품번호 '+PARTS[n.part].elementId:'앞 단계에서 만든 묶음'} · ${n.qty}개</small></span></button>`).join('');
 }
-log('모드 1 시작',set?'60482':'기본 연습');update();
+$('#model').addEventListener('guide-render-error',e=>{modelUnavailable=true;$('#model-error').hidden=false;$('#model-error').textContent=e.detail;if(set){guideDisplay='manual';updateSetGuide();}});
+$('#model').addEventListener('guide-render-ready',()=>{modelUnavailable=false;$('#model-error').hidden=true;guideDisplay='model';update();});
+log('모드 1 시작',set?'60482':'기본 연습');update();playConnection();
