@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#5974ff">
+  <meta name="description" content="내 손의 블록에서, 다음 아이디어까지. BLOCK MATE 바디스토밍 시제품.">
+  <title>BLOCK MATE — 조립과 창작을 함께</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css?v=4">
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 이동</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="서비스 메뉴">
+      <a href="#home" data-action="home" class="brand" aria-label="BLOCK MATE 홈"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>BLOCK MATE<span class="brand-sub">BUILD YOUR NEXT IDEA</span></span></a>
+      <div class="sidebar-label">나의 작업 공간</div>
+      <nav id="navigation"></nav>
+      <div class="sidebar-bottom">
+        <div class="session-line"><span class="session-dot"></span>바디스토밍 시제품</div>
+        <p>인식과 추천은 준비된 시나리오로<br>진행해요.</p>
+        <button class="text-button" data-action="open-operator"><span data-icon="sliders"></span>시연 패널 열기</button>
+      </div>
+    </aside>
+    <div class="app-body">
+      <header class="topbar">
+        <div class="breadcrumb" id="breadcrumb"></div>
+        <div class="top-actions"><button class="icon-button" data-action="open-operator" aria-label="시연 패널 열기" title="시연 패널"><span data-icon="sliders"></span></button><button class="icon-button" data-action="toggle-sound" id="sound-button" aria-label="음성 안내 켜기" title="음성 안내"><span data-icon="volume"></span></button><button class="secondary small" data-action="open-notes"><span data-icon="notebook"></span><span class="hide-mobile">관찰 기록</span></button></div>
+      </header>
+      <main id="main" tabindex="-1"></main>
+      <footer class="app-footer"><span>BLOCK MATE</span><span>카메라 영상은 서버에 저장하지 않아요.</span></footer>
+    </div>
+  </div>
+  <div id="overlay-root"></div>
+  <div id="live-message" class="sr-only" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js?v=4"></script>
+</body>
+</html>

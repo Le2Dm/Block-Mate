@@ -1,0 +1,6 @@
+Official source: https://www.lego.com/cdn/product-assets/product.bi.core.pdf/6606824.pdf
+Set 60482, Rides – Fire Truck, 2026, LEGO Group.
+Instruction pages and part thumbnails extracted from this source for the BLOCK MATE classroom prototype.
+Element IDs and quantities transcribed from pages 62–63. Names in Korean are descriptive labels by BLOCK MATE, not official catalog names.
+Captions and simplified foundation model are prepared in advance; no automatic PDF-to-3D conversion is performed.
+This is not an official LEGO service. Source material ©2026 The LEGO Group.
